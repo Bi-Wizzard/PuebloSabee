@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PuebloSaber — Aprende jugando</title>
+<style>
+/* ============ PALETA Y BASE ============ */
+:root{
+  --tinta:#262633; --papel:#FFF9EA; --crema:#F3E7C6;
+  --verde:#58C05A; --verde-osc:#2E7D32; --rojo:#E4573D;
+  --azul:#3D7DE4; --oro:#F2B434; --morado:#8E5AC8;
+  --noche:#182029; --cielo:#8ED8F8;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--noche);
+  font-family:'Courier New',Courier,monospace;
+  font-weight:bold; color:var(--tinta);
+  -webkit-font-smoothing:none;
+}
+body::after{ /* scanlines retro */
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:999;
+  background:repeating-linear-gradient(0deg, rgba(0,0,0,.09) 0 1px, transparent 1px 3px);
+  mix-blend-mode:multiply;
+}
+canvas{image-rendering:pixelated; image-rendering:crisp-edges}
+button{font-family:inherit;font-weight:bold;cursor:pointer}
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible{
+  outline:3px solid var(--oro); outline-offset:2px;
+}
+.oculto{display:none!important}
+
+/* ============ PANTALLAS ============ */
+.pantalla{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;overflow:auto;padding:12px}
+.pantalla.activa{display:flex}
+
+/* ============ COMPONENTES RETRO ============ */
+.caja{
+  background:var(--papel);
+  border:4px solid var(--tinta); border-radius:10px;
+  box-shadow:inset 0 0 0 3px #fff, 0 6px 0 rgba(0,0,0,.35);
+}
+.btn-retro{
+  display:inline-block; padding:12px 22px;
+  background:var(--papel); color:var(--tinta);
+  border:4px solid var(--tinta); border-radius:10px;
+  box-shadow:inset 0 0 0 3px #fff, 0 5px 0 var(--tinta);
+  font-size:16px; letter-spacing:1px; text-transform:uppercase;
+  transition:transform .06s, box-shadow .06s;
+}
+.btn-retro:active{transform:translateY(4px); box-shadow:inset 0 0 0 3px #fff, 0 1px 0 var(--tinta)}
+.btn-retro.primario{background:var(--oro)}
+.btn-retro.secundario{background:var(--crema); font-size:13px; padding:9px 14px}
+.btn-retro:disabled{opacity:.5;cursor:not-allowed}
+
+/* ============ 1. TÍTULO ============ */
+#pantalla-titulo{background:linear-gradient(180deg, var(--cielo) 0%, #BDEBBB 70%, #7ECB5A 70%, #6CBF4A 100%)}
+.logo{
+  font-size:clamp(40px,9vw,76px); line-height:1; color:var(--oro);
+  text-shadow:0 4px 0 var(--rojo), 0 8px 0 var(--tinta), 4px 4px 0 var(--rojo), 4px 8px 0 var(--tinta);
+  letter-spacing:2px; margin-bottom:6px; text-align:center;
+}
+.logo span{color:var(--verde); text-shadow:0 4px 0 var(--azul), 0 8px 0 var(--tinta), 4px 4px 0 var(--azul), 4px 8px 0 var(--tinta)}
+#tag-titulo{min-height:44px;font-size:15px;color:var(--tinta);background:rgba(255,255,255,.75);padding:8px 16px;border-radius:8px;margin:8px 0 18px;text-align:center;max-width:520px}
+#cv-titulo{width:128px;height:128px;margin:6px 0 14px;animation:flotar 2.2s ease-in-out infinite}
+@keyframes flotar{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.parpadea{animation:parp 1.1s steps(2) infinite}
+@keyframes parp{50%{opacity:0}}
+.pie-titulo{margin-top:22px;font-size:11px;color:#3c5a3c;text-align:center}
+
+/* ============ 2. CONFIGURACIÓN ============ */
+#pantalla-config{background:linear-gradient(180deg,#BDEBBB,#8ED8F8)}
+.panel-config{width:min(580px,96vw);padding:20px 22px;margin:auto}
+.panel-config h2{font-size:20px;text-align:center;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px}
+.panel-config .sub{font-size:12px;text-align:center;color:#666;margin-bottom:14px}
+.campo{margin-bottom:12px}
+.campo label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;color:#555}
+.campo input[type=text],.campo input[type=number],.campo select,.campo textarea{
+  width:100%;padding:10px;font-family:inherit;font-weight:bold;font-size:14px;
+  border:3px solid var(--tinta);border-radius:8px;background:#fff;
+}
+.campo textarea{min-height:110px;resize:vertical}
+.fila-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.zona-subida{border:3px dashed var(--tinta);border-radius:8px;padding:10px;background:#fff;text-align:center}
+.zona-subida .lbl-archivo{display:inline-block;background:var(--azul);color:#fff;padding:8px 14px;border-radius:8px;border:3px solid var(--tinta);cursor:pointer;font-size:13px}
+#img-preview{max-width:140px;max-height:100px;margin-top:8px;border:3px solid var(--tinta);border-radius:6px;display:none}
+#nombre-archivo{font-size:11px;color:#555;margin-top:6px;word-break:break-all}
+.acciones-config{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.segmento{display:flex;gap:8px;margin-bottom:14px}
+.seg-btn{flex:1;padding:10px 6px;border:3px solid var(--tinta);border-radius:8px;background:#fff;font-size:12px;text-transform:uppercase;letter-spacing:1px;box-shadow:0 3px 0 var(--tinta)}
+.seg-btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--tinta)}
+.seg-btn.activo{background:var(--oro)}
+#lista-temas{max-height:190px;overflow:auto;border:3px solid var(--tinta);border-radius:8px;background:#fff;padding:6px 8px}
+#lista-temas label{display:flex;gap:8px;align-items:flex-start;padding:7px 4px;font-size:13px;cursor:pointer;border-bottom:2px dashed #eee}
+#lista-temas label:last-child{border-bottom:none}
+#lista-temas input{width:18px;height:18px;accent-color:var(--verde);flex:none;margin-top:1px}
+#lista-temas .vacio{font-size:12px;color:#777;padding:8px}
+.mini-acciones{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px}
+.mini-acciones label{margin:0}
+.btn-mini{font-size:10px;padding:5px 9px;border:2px solid var(--tinta);border-radius:6px;background:var(--crema);text-transform:uppercase}
+
+/* overlays */
+.overlay{position:fixed;inset:0;background:rgba(24,32,41,.85);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.overlay .caja{padding:24px;max-width:440px;text-align:center}
+.spinner-pixel{width:48px;height:48px;margin:0 auto 14px;background:conic-gradient(var(--oro) 0 25%,var(--rojo) 0 50%,var(--azul) 0 75%,var(--verde) 0);border:4px solid var(--tinta);border-radius:8px;animation:girar 1s steps(8) infinite}
+@keyframes girar{to{transform:rotate(360deg)}}
+#tip-cargando{font-size:12px;color:#666;margin-top:10px;min-height:32px}
+
+/* ============ 3. MAPA ============ */
+#pantalla-mapa{padding:0;background:#000}
+#cv-mapa{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+#hud{
+  position:absolute;top:8px;left:8px;right:60px;z-index:5;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:var(--papel);border:4px solid var(--tinta);border-radius:10px;
+  box-shadow:inset 0 0 0 3px #fff; padding:6px 12px; font-size:13px;
+  max-width:640px;
+}
+#hud .xp-track{width:70px;height:10px;background:#3b4252;border:2px solid var(--tinta);border-radius:4px;overflow:hidden}
+#hud .xp-fill{height:100%;background:var(--oro);width:0%;transition:width .4s}
+#hud-insignias{display:flex;gap:4px}
+#hud-insignias canvas{width:26px;height:26px}
+#hud-mision{font-size:11px;color:#555;flex-basis:100%;line-height:1.3}
+.btn-sonido{
+  position:absolute;top:8px;right:8px;z-index:6;width:44px;height:44px;
+  background:var(--papel);border:4px solid var(--tinta);border-radius:10px;
+  box-shadow:inset 0 0 0 3px #fff;font-size:18px;
+}
+/* diálogo del mapa */
+#dlg-mapa{
+  position:absolute;left:50%;transform:translateX(-50%);bottom:14px;z-index:6;
+  width:min(600px,94vw);padding:14px 18px;min-height:84px;cursor:pointer;
+}
+#texto-mapa{font-size:15px;line-height:1.45;white-space:pre-line}
+.flecha-cont{text-align:right;font-size:16px;animation:parp 1s steps(2) infinite}
+
+/* controles táctiles */
+#pad{position:absolute;left:12px;bottom:12px;z-index:7;display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px);gap:2px;opacity:.9}
+#pad button{background:var(--papel);border:4px solid var(--tinta);border-radius:10px;box-shadow:inset 0 0 0 2px #fff;font-size:20px;user-select:none;touch-action:none}
+#pad .hueco{visibility:hidden}
+#btn-a{position:absolute;right:16px;bottom:26px;z-index:7;width:66px;height:66px;border-radius:50%;background:var(--rojo);color:#fff;border:4px solid var(--tinta);box-shadow:inset 0 0 0 3px #ff8a75,0 4px 0 var(--tinta);font-size:22px;user-select:none;touch-action:none;opacity:.92}
+@media (hover:hover) and (pointer:fine){ #pad,#btn-a{display:none} }
+
+/* ============ 4. BATALLA ============ */
+#pantalla-batalla{padding:0;background:#000;justify-content:flex-start}
+.batalla-marco{width:min(780px,100vw);height:100%;display:flex;flex-direction:column;margin:0 auto;position:relative}
+.escena{flex:1;position:relative;background:linear-gradient(180deg,#9ADCF2 0%, #C8EFB0 58%, #7ECB5A 58%, #6CBF4A 100%);border-left:4px solid var(--tinta);border-right:4px solid var(--tinta);overflow:hidden;min-height:220px}
+.zona-sprite{position:absolute;display:flex;flex-direction:column;align-items:center}
+.zona-sprite .plataforma{width:150px;height:34px;background:radial-gradient(ellipse at center,#5FAF4C 0 60%,transparent 61%);margin-top:-22px}
+#zona-rival{top:8%;right:6%}
+#zona-jugador{bottom:4%;left:6%}
+#cv-rival{width:132px;height:132px;animation:flotar 2.4s ease-in-out infinite}
+#cv-jugador{width:150px;height:150px}
+.panel-hp{position:absolute;padding:8px 12px;font-size:13px;min-width:200px}
+#panel-rival{top:10%;left:4%}
+#panel-jugador{bottom:12%;right:4%}
+.panel-hp .nom{display:flex;justify-content:space-between;gap:8px;margin-bottom:5px}
+.hp-track{height:13px;background:#3b4252;border:3px solid var(--tinta);border-radius:6px;overflow:hidden}
+.hp-fill{height:100%;width:100%;background:var(--verde);transition:width .55s steps(12)}
+.hp-fill.media{background:var(--oro)} .hp-fill.baja{background:var(--rojo)}
+.golpe{animation:sacudir .5s steps(4)}
+@keyframes sacudir{0%,100%{transform:translateX(0)}25%{transform:translateX(-10px)}50%{transform:translateX(8px)}75%{transform:translateX(-5px)}}
+.destello{animation:flash .5s steps(4)}
+@keyframes flash{0%,100%{filter:none}25%,75%{filter:brightness(3) saturate(0)}}
+#dlg-batalla{margin:0 0 0;border-radius:0 0 10px 10px;padding:14px 18px;min-height:200px;cursor:pointer;position:relative}
+#texto-batalla{font-size:15px;line-height:1.5;white-space:pre-line;min-height:66px}
+.opciones{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.opciones .titulo-op{grid-column:1/-1;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#777}
+.btn-ataque{
+  padding:10px;min-height:52px;font-size:13px;line-height:1.3;text-align:left;
+  background:var(--crema);border:3px solid var(--tinta);border-radius:8px;
+  box-shadow:inset 0 0 0 2px #fff,0 3px 0 var(--tinta);
+}
+.btn-ataque:active{transform:translateY(3px);box-shadow:inset 0 0 0 2px #fff}
+.btn-ataque::before{content:'▶ ';color:var(--rojo)}
+.entrada{display:flex;gap:8px;margin-top:12px}
+.entrada input{flex:1;padding:10px;font-family:inherit;font-weight:bold;font-size:14px;border:3px solid var(--tinta);border-radius:8px}
+#continuar-batalla{position:absolute;right:16px;bottom:10px;font-size:18px;animation:parp 1s steps(2) infinite}
+#btn-huir{position:absolute;top:6px;left:50%;transform:translateX(-50%);z-index:5;font-size:11px;padding:6px 10px;background:var(--papel);border:3px solid var(--tinta);border-radius:8px;box-shadow:0 3px 0 var(--tinta)}
+
+/* ============ 5. VICTORIA ============ */
+#pantalla-victoria{background:linear-gradient(180deg,#FFE9A8,#F2B434 60%,#E08A2E)}
+.panel-victoria{width:min(620px,96vw);padding:22px;margin:auto;text-align:center}
+.panel-victoria h2{font-size:26px;text-transform:uppercase;letter-spacing:2px;color:var(--rojo);text-shadow:2px 2px 0 var(--tinta)}
+#vic-insignias{display:flex;justify-content:center;gap:14px;margin:16px 0}
+#vic-insignias canvas{width:56px;height:56px}
+#vic-stats{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;font-size:13px;margin-bottom:14px}
+#vic-stats div{background:var(--crema);border:3px solid var(--tinta);border-radius:8px;padding:8px 14px}
+.bloque-vic{text-align:left;background:#fff;border:3px solid var(--tinta);border-radius:8px;padding:12px;margin-bottom:12px;font-size:13px;line-height:1.5;max-height:180px;overflow:auto}
+.bloque-vic h3{font-size:13px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;color:var(--verde-osc)}
+.bloque-vic ul{margin-left:18px}
+
+@media (max-width:620px){
+  #panel-rival{top:4%} #zona-rival{top:16%;right:2%}
+  #cv-rival{width:96px;height:96px} #cv-jugador{width:110px;height:110px}
+  #panel-jugador{bottom:6%} .panel-hp{min-width:160px;font-size:11px}
+  #hud{font-size:11px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 1. PANTALLA DE TÍTULO ============ -->
+<div id="pantalla-titulo" class="pantalla activa">
+  <div class="logo">Pueblo<span>Saber</span></div>
+  <canvas id="cv-titulo" width="128" height="128"></canvas>
+  <div id="tag-titulo"></div>
+  <button id="btn-comenzar" class="btn-retro primario parpadea">▶ Comenzar aventura</button>
+  <div class="pie-titulo">Un juego donde cada batalla enseña algo nuevo<br>Flechas / WASD para moverte · Z o Espacio para hablar</div>
+</div>
+
+<!-- ============ 2. CONFIGURACIÓN DEL PADRE ============ -->
+<div id="pantalla-config" class="pantalla">
+  <div class="caja panel-config">
+    <h2>Prepara la aventura</h2>
+    <div class="sub">Elige el temario por curso (Chile) o sube tu propio contenido</div>
+    <div class="fila-2">
+      <div class="campo">
+        <label for="sel-nivel">Curso</label>
+        <select id="sel-nivel">
+          <option value="1B">1º Básico</option><option value="2B">2º Básico</option>
+          <option value="3B" selected>3º Básico</option><option value="4B">4º Básico</option>
+          <option value="5B">5º Básico</option><option value="6B">6º Básico</option>
+          <option value="7B">7º Básico</option><option value="8B">8º Básico</option>
+          <option value="1M">1º Medio</option><option value="2M">2º Medio</option>
+          <option value="3M">3º Medio</option><option value="4M">4º Medio</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="in-edad">Edad del niño/a</label>
+        <input type="number" id="in-edad" min="5" max="18" value="8">
+      </div>
+    </div>
+    <div class="segmento">
+      <button id="modo-temario" class="seg-btn activo">📚 Temario por curso</button>
+      <button id="modo-propio" class="seg-btn">✏️ Contenido propio</button>
+    </div>
+    <div id="seccion-temario">
+      <div class="campo">
+        <label for="sel-materia-cur">Asignatura</label>
+        <select id="sel-materia-cur"></select>
+      </div>
+      <div class="campo">
+        <div class="mini-acciones">
+          <label>Temas a practicar (elige uno o varios)</label>
+          <button id="btn-todos" class="btn-mini">Marcar todos</button>
+        </div>
+        <div id="lista-temas"></div>
+      </div>
+    </div>
+    <div id="seccion-propio" class="oculto">
+      <div class="campo">
+        <label for="in-materia">Materia</label>
+        <input type="text" id="in-materia" placeholder="Ej.: Matemática, Lenguaje, Ciencias...">
+      </div>
+      <div class="campo">
+        <label for="in-contenido">Contenido a aprender (pega aquí el temario)</label>
+        <textarea id="in-contenido" placeholder="Pega el texto del temario, apuntes, definiciones, tablas de multiplicar..."></textarea>
+      </div>
+      <div class="campo">
+        <label>...o sube una foto del examen / prueba</label>
+        <div class="zona-subida">
+          <label class="lbl-archivo" for="in-imagen">📷 Elegir imagen</label>
+          <input type="file" id="in-imagen" accept="image/*" class="oculto">
+          <div id="nombre-archivo"></div>
+          <img id="img-preview" alt="Vista previa del examen">
+        </div>
+      </div>
+    </div>
+    <div class="acciones-config">
+      <button id="btn-volver-titulo" class="btn-retro secundario">← Volver</button>
+      <button id="btn-ejemplo" class="btn-retro secundario">Usar contenido de ejemplo</button>
+      <button id="btn-crear" class="btn-retro primario">✨ Crear aventura</button>
+    </div>
+  </div>
+</div>
+
+<!-- overlay de carga -->
+<div id="overlay-cargando" class="overlay oculto">
+  <div class="caja">
+    <div class="spinner-pixel"></div>
+    <div id="txt-cargando">Creando tu pueblo de preguntas...</div>
+    <div id="tip-cargando"></div>
+  </div>
+</div>
+
+<!-- overlay de error -->
+<div id="overlay-error" class="overlay oculto">
+  <div class="caja">
+    <div style="font-size:34px;margin-bottom:8px">😅</div>
+    <div id="txt-error" style="margin-bottom:14px;font-size:14px;line-height:1.5"></div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button id="btn-reintentar" class="btn-retro primario">Reintentar</button>
+      <button id="btn-offline" class="btn-retro secundario">Jugar con preguntas de ejemplo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 3. MAPA DEL PUEBLO ============ -->
+<div id="pantalla-mapa" class="pantalla">
+  <canvas id="cv-mapa"></canvas>
+  <div id="hud" class="caja" style="border-radius:10px">
+    <span id="hud-nivel">Nv 1</span>
+    <span class="xp-track"><span class="xp-fill" id="hud-xp"></span></span>
+    <span id="hud-insignias">
+      <canvas id="hud-i0" width="26" height="26"></canvas>
+      <canvas id="hud-i1" width="26" height="26"></canvas>
+      <canvas id="hud-i2" width="26" height="26"></canvas>
+      <canvas id="hud-i3" width="26" height="26"></canvas>
+    </span>
+    <span id="hud-mision"></span>
+  </div>
+  <button id="btn-sonido" class="btn-sonido" aria-label="Sonido">🔊</button>
+  <div id="dlg-mapa" class="caja oculto">
+    <div id="texto-mapa"></div>
+    <div id="cont-mapa" class="flecha-cont oculto">▼</div>
+  </div>
+  <div id="pad">
+    <button class="hueco"></button><button data-dir="arriba" aria-label="Arriba">▲</button><button class="hueco"></button>
+    <button data-dir="izquierda" aria-label="Izquierda">◀</button><button class="hueco"></button><button data-dir="derecha" aria-label="Derecha">▶</button>
+    <button class="hueco"></button><button data-dir="abajo" aria-label="Abajo">▼</button><button class="hueco"></button>
+  </div>
+  <button id="btn-a" aria-label="Hablar / Aceptar">A</button>
+</div>
+
+<!-- ============ 4. BATALLA ============ -->
+<div id="pantalla-batalla" class="pantalla">
+  <div class="batalla-marco">
+    <button id="btn-huir">🏃 Volver al pueblo</button>
+    <div class="escena">
+      <div id="panel-rival" class="caja panel-hp">
+        <div class="nom"><span id="nb-rival"></span><span id="nv-rival"></span></div>
+        <div class="hp-track"><div id="hp-rival" class="hp-fill"></div></div>
+      </div>
+      <div id="zona-rival" class="zona-sprite">
+        <canvas id="cv-rival" width="132" height="132"></canvas>
+        <div class="plataforma"></div>
+      </div>
+      <div id="zona-jugador" class="zona-sprite">
+        <canvas id="cv-jugador" width="150" height="150"></canvas>
+        <div class="plataforma"></div>
+      </div>
+      <div id="panel-jugador" class="caja panel-hp">
+        <div class="nom"><span id="nb-jugador">Tú</span><span id="nv-jugador"></span></div>
+        <div class="hp-track"><div id="hp-jugador" class="hp-fill"></div></div>
+      </div>
+    </div>
+    <div id="dlg-batalla" class="caja">
+      <div id="texto-batalla"></div>
+      <div id="opciones-batalla" class="opciones oculto"></div>
+      <div id="entrada-batalla" class="entrada oculto">
+        <input type="text" id="input-respuesta" placeholder="Escribe tu respuesta..." autocomplete="off">
+        <button id="btn-responder" class="btn-retro secundario">¡Atacar!</button>
+      </div>
+      <div id="continuar-batalla" class="oculto">▼</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 5. VICTORIA ============ -->
+<div id="pantalla-victoria" class="pantalla">
+  <div class="caja panel-victoria">
+    <h2>🏆 ¡Campeón/a del Saber!</h2>
+    <div id="vic-insignias"></div>
+    <div id="vic-stats"></div>
+    <div class="bloque-vic"><h3>Temas dominados</h3><ul id="vic-temas"></ul></div>
+    <div class="bloque-vic"><h3>Lo que has aprendido</h3><ul id="vic-aprendido"></ul></div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button id="btn-seguir" class="btn-retro secundario">Seguir explorando</button>
+      <button id="btn-nueva" class="btn-retro primario">Nueva aventura</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+/* ==================== UTILIDADES ==================== */
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const azar = n => Math.floor(Math.random()*n);
+const barajar = a=>{const b=a.slice();for(let i=b.length-1;i>0;i--){const j=azar(i+1);[b[i],b[j]]=[b[j],b[i]]}return b};
+const norm = s => String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .replace(/[^a-z0-9nñ,.\- ]/g,' ').replace(/\s+/g,' ').trim();
+
+function irA(id){
+  document.querySelectorAll('.pantalla').forEach(p=>p.classList.remove('activa'));
+  $(id).classList.add('activa');
+  S.enMapa = (id==='pantalla-mapa');
+}
+
+/* ==================== AUDIO RETRO (Web Audio API) ==================== */
+const Audio8 = {
+  ctx:null, on:true,
+  init(){ if(!this.ctx){ try{ this.ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ this.on=false; } } if(this.ctx&&this.ctx.state==='suspended') this.ctx.resume(); },
+  beep(f,dur,tipo,vol,retardo){
+    if(!this.on||!this.ctx) return;
+    const t=this.ctx.currentTime+(retardo||0);
+    const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+    o.type=tipo||'square'; o.frequency.value=f;
+    g.gain.setValueAtTime(vol||0.10,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(g); g.connect(this.ctx.destination); o.start(t); o.stop(t+dur+0.02);
+  },
+  seq(notas,paso,tipo,vol){ notas.forEach((f,i)=>{ if(f) this.beep(f,paso*0.9,tipo,vol,i*paso); }); },
+  sfx:{
+    menu(){Audio8.beep(660,0.06)},
+    elegir(){Audio8.seq([523,784],0.07)},
+    correcto(){Audio8.seq([523,659,784,1047],0.09,'square',0.12)},
+    fallo(){Audio8.seq([330,262,196],0.13,'sawtooth',0.09)},
+    golpe(){Audio8.beep(140,0.18,'sawtooth',0.14)},
+    encuentro(){Audio8.seq([392,370,349,330,311,294],0.06,'square',0.10)},
+    insignia(){Audio8.seq([523,659,784,1047,784,1047,1319],0.11,'triangle',0.14)},
+    victoria(){Audio8.seq([523,523,523,659,784,0,784,1047],0.13,'square',0.13)},
+    paso(){}
+  },
+  toggle(){ this.on=!this.on; if(this.on){this.init(); this.sfx.menu();} sincronizarBotonesSonido(); }
+};
+function sincronizarBotonesSonido(){ const ic=Audio8.on?'🔊':'🔇'; $('btn-sonido').textContent=ic; }
+
+/* ==================== MÁQUINA DE ESCRIBIR ==================== */
+let twTimer=null, twEl=null, twCb=null, twTexto='';
+function escribir(el, texto, cb){
+  if(twTimer){clearInterval(twTimer); twTimer=null;}
+  twEl=el; twCb=cb||null; twTexto=texto; el.textContent='';
+  let i=0;
+  twTimer=setInterval(()=>{
+    i+=1; el.textContent=texto.slice(0,i);
+    if(i%4===0) Audio8.beep(880,0.015,'square',0.02);
+    if(i>=texto.length) terminarEscritura();
+  },22);
+}
+function terminarEscritura(){
+  if(!twEl) return;
+  if(twTimer){clearInterval(twTimer); twTimer=null;}
+  twEl.textContent=twTexto;
+  const cb=twCb; twEl=null; twCb=null;
+  if(cb) cb();
+}
+function escribiendo(){ return !!twTimer; }
+
+/* ==================== ARTE PIXEL (sprites) ==================== */
+const PAL_BASE={K:'#1c1c24',W:'#ffffff',P:'#F8A5C2',S:'#F2C79A'};
+const ARTES={
+  brotito:{pal:{...PAL_BASE,G:'#58C05A',D:'#2E7D32',L:'#9CDB6E'},px:[
+    "................","......LL........",".....LDDL.......","....LD..DL......",
+    ".....DLLD.......","......GG........","....GGGGGG......","...GGGGGGGG.....",
+    "..GGKGGGGKGG....","..GGGGGGGGGG....",".GGPGGGGGGPG....",".GGGGWWGGGGG....",
+    "..GGGWWGGGG.....","..GGGGGGGGG.....","...GG....GG.....","................"]},
+  flamio:{pal:{...PAL_BASE,O:'#F2913D',R:'#E4573D',Y:'#F8D14A'},px:[
+    "................",".......R........","......RYR.......",".....RYYYR......",
+    "......RYR.......",".....OOOO.......","...OOOOOOOO.....","..OOOOOOOOOO....",
+    "..OKOOOOOKOO....","..OOOOOOOOOO....",".OOPOOOOOOPO....",".OOOOWWOOOOO....",
+    "..OOOWWOOOO.....","..OOOOOOOOO.....","...OO....OO.....","................"]},
+  gotina:{pal:{...PAL_BASE,B:'#4A9DF2',N:'#2C6BC9'},px:[
+    "................",".......B........","......BB........",".....BBBB.......",
+    "....BBBBBB......","....BBBBBB......","...BBBBBBBB.....","..BBWBBBBBBB....",
+    "..BBBBBBBBBB....","..BKBBBBBKBB....","..BBBBBBBBBB....",".BBPBBBBBBPB....",
+    ".BBBBWWBBBBB....","..BBBBBBBBB.....","...BB....BB.....","................"]},
+  sabiodron:{pal:{...PAL_BASE,U:'#8E5AC8',C:'#C9A6F2',Y:'#F2B434'},px:[
+    "......U..U......",".....UUUUUU.....","....UUUUUUUU....","...UWWUUUUWWU...",
+    "...UWKUUUUKWU...","...UUUUYYUUUU...","...UUUUYYUUUU...","..UUCUUUUUUCUU..",
+    "..UUCCUUUUCCUU..","..UUUCCCCCCUUU..","...UUUCCCCUUU...","...UUUUUUUUUU...",
+    "....UUUUUUUU....","....YY....YY....","................","................"]},
+  entrenador:{pal:{...PAL_BASE,R:'#E4573D',H:'#6B4A2B',J:'#3D7DE4',N:'#38455A'},px:[
+    "................",".....RRRRR......","....RRRRRRR.....","...RRRRRRRRR....",
+    "...WWWWWWWWW....","....HHHHHHH.....","....HHHHHHH.....","...JJJJJJJJJ....",
+    "..JJJJJJJJJJJ...",".JJSJJJJJJJSJJ..",".JJSJJJJJJJSJJ..","..JJJJJJJJJJJ...",
+    "...NNNN.NNNN....","...NNNN.NNNN....","...KKK...KKK....","................"]},
+  jugAbajo:{pal:{...PAL_BASE,R:'#E4573D',J:'#3D7DE4',N:'#38455A'},px:[
+    "...RRRRRR...","..RRRRRRRR..",".RRRRRRRRRR.","..WWWWWWWW..",
+    ".SSKSSSSKSS.",".SSSSSSSSSS.","..JJJJJJJJ..",".JJJJJJJJJJ.",
+    "JSJJJJJJJJSJ",".JJJJJJJJJJ.",".NNNN..NNNN.",".KKK....KKK."]},
+  jugArriba:{pal:{...PAL_BASE,R:'#E4573D',H:'#6B4A2B',J:'#3D7DE4',N:'#38455A'},px:[
+    "...RRRRRR...","..RRRRRRRR..",".RRRRRRRRRR.","..HHHHHHHH..",
+    ".HHHHHHHHHH.",".SSSSSSSSSS.","..JJJJJJJJ..",".JJJJJJJJJJ.",
+    "JSJJJJJJJJSJ",".JJJJJJJJJJ.",".NNNN..NNNN.",".KKK....KKK."]},
+  jugLado:{pal:{...PAL_BASE,R:'#E4573D',J:'#3D7DE4',N:'#38455A'},px:[
+    "...RRRRRR...","..RRRRRRRR..",".RRRRRRRRRR.","..WWWWWWWW..",
+    ".SSSSSSKSS..",".SSSSSSSSS..","..JJJJJJJJ..",".JJJJJJJJJ..",
+    ".JJJJJJJJSJ.",".JJJJJJJJJ..","..NNNNNNN...","..KKKKKK...."]},
+  aldeano:{pal:{...PAL_BASE,H:'#6B4A2B',C:'#58C05A',N:'#5A4632'},px:[
+    "...HHHHHH...","..HHHHHHHH..",".HHSSSSSSHH.",".HSKSSSSKSH.",
+    ".HSSSSSSSSH.","..SSSPPSSS..",".CCCCCCCCCC.","CSCCCCCCCCSC",
+    ".CCCCCCCCCC.",".CCCCCCCCCC.",".NNNN..NNNN.",".KKK....KKK."]}
+};
+// Dibuja un arte pixel en un contexto, en coords x,y con tamaño de pixel s
+function dibujarArte(ctx, arte, x, y, s, flip, palExtra){
+  const pal = palExtra ? {...arte.pal, ...palExtra} : arte.pal;
+  const filas = arte.px, w = filas[0].length;
+  for(let j=0;j<filas.length;j++){
+    for(let i=0;i<w;i++){
+      const ch = filas[j][flip ? (w-1-i) : i];
+      const col = pal[ch];
+      if(!col) continue;
+      ctx.fillStyle = col;
+      ctx.fillRect(Math.round(x+i*s), Math.round(y+j*s), Math.ceil(s), Math.ceil(s));
+    }
+  }
+}
+function pintarEnCanvas(cv, arte, palExtra){
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.imageSmoothingEnabled=false;
+  const s = Math.floor(Math.min(cv.width/arte.px[0].length, cv.height/arte.px.length));
+  const ox = (cv.width - s*arte.px[0].length)/2, oy = (cv.height - s*arte.px.length)/2;
+  dibujarArte(ctx, arte, ox, oy, s, false, palExtra);
+}
+// Insignias: 0 hoja, 1 llama, 2 gota, 3 estrella
+function dibujarInsignia(cv, idx, ganada){
+  const ctx=cv.getContext('2d'); const w=cv.width,h=cv.height;
+  ctx.clearRect(0,0,w,h); ctx.imageSmoothingEnabled=false;
+  const cols=['#58C05A','#F2913D','#4A9DF2','#F2B434'];
+  const col = ganada?cols[idx]:'#8a8f98';
+  ctx.globalAlpha = ganada?1:0.35;
+  ctx.fillStyle='#262633'; ctx.beginPath(); ctx.arc(w/2,h/2,w/2-1,0,7); ctx.fill();
+  ctx.fillStyle=col; ctx.beginPath(); ctx.arc(w/2,h/2,w/2-4,0,7); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.strokeStyle='#fff'; ctx.lineWidth=Math.max(2,w*0.07);
+  const c=w/2, r=w*0.24;
+  ctx.beginPath();
+  if(idx===0){ // hoja
+    ctx.ellipse(c,c,r*0.8,r*1.15,0.7,0,7); ctx.fill();
+  } else if(idx===1){ // llama
+    ctx.moveTo(c,c-r*1.2); ctx.quadraticCurveTo(c+r*1.1,c, c,c+r*1.1);
+    ctx.quadraticCurveTo(c-r*1.1,c, c,c-r*1.2); ctx.fill();
+  } else if(idx===2){ // gota
+    ctx.moveTo(c,c-r*1.2); ctx.quadraticCurveTo(c+r*1.2,c+r*0.6, c,c+r*1.1);
+    ctx.quadraticCurveTo(c-r*1.2,c+r*0.6, c,c-r*1.2); ctx.fill();
+  } else { // estrella
+    for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rr=i%2?r*0.5:r*1.2;
+      const px=c+Math.cos(a)*rr, py=c+Math.sin(a)*rr;
+      if(i===0)ctx.moveTo(px,py); else ctx.lineTo(px,py); }
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+/* ==================== CRIATURAS Y INSIGNIAS ==================== */
+const CRIATURAS=[
+  {nombre:'Brotito',  arte:'brotito'},
+  {nombre:'Flamio',   arte:'flamio'},
+  {nombre:'Gotina',   arte:'gotina'},
+  {nombre:'Sabiodrón',arte:'sabiodron'}
+];
+const INSIGNIAS=['Insignia Pradera','Insignia Chispa','Insignia Río','Insignia Saber'];
+
+/* ==================== ESTADO GLOBAL (sin localStorage) ==================== */
+const S={
+  config:{materia:'',nivel:'',edad:8},
+  subtemas:[], zonas:[0,1,2],
+  jugador:{xp:0,nivel:1,hpMax:100},
+  colaFallidas:[],
+  insignias:[false,false,false,false],
+  estad:{aciertos:0,fallos:0,batallas:0},
+  enMapa:false, dlgAbierto:false,
+  imagenArchivo:null
+};
+function nivelDe(xp){ return 1+Math.floor(xp/100); }
+
+/* ==================== API DE ANTHROPIC ==================== */
+async function llamarClaude(messages){
+  const r = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages})
+  });
+  const data = await r.json();
+  if(data.error) throw new Error(data.error.message||'Error de la API');
+  const texto=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  if(!texto.trim()) throw new Error('La API devolvió una respuesta vacía');
+  return texto;
+}
+// Cierra llaves/corchetes abiertos (para reparar JSON truncado)
+function cerrarJSON(t){
+  let pila=[],cad=false,esc=false;
+  for(const ch of t){
+    if(esc){esc=false;continue}
+    if(ch==='\\'){esc=true;continue}
+    if(ch==='"'){cad=!cad;continue}
+    if(cad) continue;
+    if(ch==='{')pila.push('}'); else if(ch==='[')pila.push(']');
+    else if(ch==='}'||ch===']')pila.pop();
+  }
+  return t+pila.reverse().join('');
+}
+function parsearJSONSeguro(txt){
+  let t=txt.replace(/```json|```/g,'').trim();
+  const ini=t.indexOf('{'); if(ini>0)t=t.slice(ini);
+  try{ return JSON.parse(t); }catch(e){}
+  // reparación: recortar hasta el último cierre completo y cerrar lo abierto
+  for(let fin=t.length; fin>2; fin--){
+    const c=t[fin-1];
+    if(c==='}'||c===']'||c==='"'){
+      try{ return JSON.parse(cerrarJSON(t.slice(0,fin))); }catch(e){}
+    }
+  }
+  throw new Error('No se pudo interpretar la respuesta como JSON');
+}
+function esquemaPrompt(edad,materia,nivel){
+  return 'Devuelve SOLO un objeto JSON válido, sin texto adicional ni backticks, con esta forma exacta:\n'
+  +'{"subtemas":[{"nombre":"...","preguntas":[{"tipo":"opcion_multiple|completar|vf|resolver","enunciado":"...","opciones":["...","...","...","..."],"correcta":"...","explicacion":"...","desglose":"..."}]}]}\n'
+  +'Reglas: genera 3 subtemas con 4 preguntas cada uno; varía los tipos; en "vf" la respuesta correcta es "Verdadero" o "Falso" y las opciones esas dos; en "completar" y "resolver" omite "opciones" y pon una respuesta corta; "explicacion" celebra el acierto en 1 frase; "desglose" explica paso a paso, con tono amable que enseña sin regañar, para cuando el niño falle; adapta vocabulario y dificultad a un niño de '+edad+' años ('+nivel+') en la materia "'+materia+'"; sé MUY conciso en todos los textos para que el JSON quepa completo.';
+}
+async function generarDesdeTexto(contenido, edad, materia, nivel){
+  const prompt='Eres el generador de preguntas del juego educativo PuebloSaber. A partir de este contenido escolar:\n\n'
+    +contenido+'\n\n'+esquemaPrompt(edad,materia,nivel);
+  const texto=await llamarClaude([{role:'user',content:prompt}]);
+  return parsearJSONSeguro(texto);
+}
+async function generarDesdeImagen(archivo, edad, materia, nivel){
+  const base64=await new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.onerror=()=>rej(new Error('No se pudo leer la imagen'));
+    r.readAsDataURL(archivo);
+  });
+  const prompt='Esta imagen es un examen o material escolar. Primero extrae mentalmente su contenido y el TIPO y FORMATO de sus preguntas. Después genera preguntas que repliquen ese mismo tipo y formato para que el niño practique el examen real. '
+    +esquemaPrompt(edad,materia,nivel);
+  const texto=await llamarClaude([{role:'user',content:[
+    {type:'image',source:{type:'base64',media_type:archivo.type||'image/jpeg',data:base64}},
+    {type:'text',text:prompt}
+  ]}]);
+  return parsearJSONSeguro(texto);
+}
+// Normaliza y valida la estructura devuelta por la API
+function normalizarDatos(obj){
+  if(!obj||!Array.isArray(obj.subtemas)) throw new Error('Formato inesperado');
+  const subs=[];
+  obj.subtemas.forEach((st,si)=>{
+    const pgs=(Array.isArray(st.preguntas)?st.preguntas:[]).map(p=>({
+      tipo:String(p.tipo||'opcion_multiple'),
+      enunciado:String(p.enunciado||'').trim(),
+      opciones:Array.isArray(p.opciones)?p.opciones.map(o=>String(o)):null,
+      correcta:String(p.correcta??'').trim(),
+      explicacion:String(p.explicacion||'¡Muy bien! Esa es la respuesta correcta.'),
+      desglose:String(p.desglose||p.explicacion||'Repasemos este concepto juntos con calma.'),
+      correctas:0, fallos:0
+    })).filter(p=>p.enunciado&&p.correcta);
+    pgs.forEach(p=>{
+      if(p.tipo==='vf') p.opciones=['Verdadero','Falso'];
+      if(p.tipo==='completar'||p.tipo==='resolver') p.opciones=null;
+      if(p.tipo==='opcion_multiple'){
+        if(!p.opciones||p.opciones.length<2){ p.tipo='completar'; p.opciones=null; }
+        else{
+          p.opciones=p.opciones.slice(0,4);
+          if(!p.opciones.some(o=>norm(o)===norm(p.correcta))) p.opciones[p.opciones.length-1]=p.correcta;
+        }
+      }
+    });
+    if(pgs.length) subs.push({nombre:String(st.nombre||('Tema '+(si+1))).trim()||('Tema '+(si+1)), preguntas:pgs});
+  });
+  if(!subs.length) throw new Error('No se pudieron extraer preguntas del contenido');
+  subs.forEach((s,i)=>s.preguntas.forEach(p=>p.sub=i));
+  return subs;
+}
+
+/* ==================== BANCO SIN CONEXIÓN (respaldo) ==================== */
+const BANCO_EJEMPLO={subtemas:[
+ {nombre:'Sumas y restas',preguntas:[
+  {tipo:'opcion_multiple',enunciado:'¿Cuánto es 7 + 8?',opciones:['13','15','16','14'],correcta:'15',explicacion:'¡Exacto! 7 + 8 = 15, porque 7 + 7 = 14 y uno más son 15.',desglose:'Paso 1: parte del 7.\nPaso 2: 7 + 7 = 14 (dobles).\nPaso 3: como es 8 y no 7, suma 1 más: 14 + 1 = 15.'},
+  {tipo:'opcion_multiple',enunciado:'¿Cuánto es 20 − 6?',opciones:['14','16','12','13'],correcta:'14',explicacion:'¡Genial! 20 − 6 = 14.',desglose:'Paso 1: de 20 quita primero 5 → 15.\nPaso 2: quita 1 más → 14.\nRestar por partes lo hace más fácil.'},
+  {tipo:'vf',enunciado:'Sumar 0 a un número lo deja igual.',opciones:['Verdadero','Falso'],correcta:'Verdadero',explicacion:'¡Correcto! El 0 no añade nada: 9 + 0 = 9.',desglose:'El cero significa "nada".\nSi a 9 le añades nada, sigues teniendo 9.\nPor eso 9 + 0 = 9.'},
+  {tipo:'completar',enunciado:'Completa: 12 + ___ = 20',correcta:'8',opciones:null,explicacion:'¡Eso es! 12 + 8 = 20.',desglose:'Piensa al revés: ¿cuánto falta de 12 a 20?\nDe 12 a 15 van 3.\nDe 15 a 20 van 5.\n3 + 5 = 8.'}]},
+ {nombre:'El mundo animal',preguntas:[
+  {tipo:'opcion_multiple',enunciado:'¿Qué animal es un mamífero?',opciones:['Rana','Delfín','Tiburón','Águila'],correcta:'Delfín',explicacion:'¡Muy bien! El delfín respira aire y alimenta a sus crías con leche.',desglose:'Los mamíferos: tienen sangre caliente, respiran con pulmones y dan leche a sus crías.\nLa rana es anfibio, el tiburón es pez y el águila es ave.\nEl delfín, aunque vive en el mar, cumple todo: ¡es mamífero!'},
+  {tipo:'vf',enunciado:'Los insectos tienen 6 patas.',opciones:['Verdadero','Falso'],correcta:'Verdadero',explicacion:'¡Correcto! Todos los insectos tienen 6 patas.',desglose:'Truco para recordar: IN-SEC-TO tiene 3 sílabas y 3 pares de patas.\n3 pares × 2 = 6 patas.\nLas arañas tienen 8, ¡por eso no son insectos!'},
+  {tipo:'opcion_multiple',enunciado:'¿Qué comen los herbívoros?',opciones:['Carne','Plantas','De todo','Insectos'],correcta:'Plantas',explicacion:'¡Eso es! "Herbívoro" viene de hierba: comen plantas.',desglose:'Herbívoro → hierba → plantas (vaca, conejo).\nCarnívoro → carne (león).\nOmnívoro → de todo (oso, humano).\nLa palabra te da la pista.'},
+  {tipo:'completar',enunciado:'El animal que hace la miel es la ___',correcta:'abeja',opciones:null,explicacion:'¡Exacto! Las abejas fabrican la miel.',desglose:'Las abejas recogen néctar de las flores.\nLo llevan a la colmena.\nAllí lo transforman en miel.\nPor eso decimos "trabajar como una abeja".'}]},
+ {nombre:'Nuestro idioma',preguntas:[
+  {tipo:'opcion_multiple',enunciado:'¿Cuál es un sustantivo?',opciones:['Correr','Bonito','Mesa','Rápidamente'],correcta:'Mesa',explicacion:'¡Muy bien! "Mesa" nombra una cosa: es un sustantivo.',desglose:'Sustantivo = nombra personas, animales o cosas (mesa).\nVerbo = acción (correr).\nAdjetivo = cómo es algo (bonito).\nAdverbio = cómo se hace (rápidamente).'},
+  {tipo:'vf',enunciado:'Las palabras "sol" y "col" riman.',opciones:['Verdadero','Falso'],correcta:'Verdadero',explicacion:'¡Correcto! Las dos terminan en "-ol".',desglose:'Dos palabras riman cuando su final suena igual.\nSOL termina en -OL.\nCOL termina en -OL.\n¡Mismo sonido final = rima!'},
+  {tipo:'completar',enunciado:'El plural de "lápiz" es ___',correcta:'lapices',opciones:null,explicacion:'¡Eso es! Lápiz → lápices.',desglose:'Las palabras que terminan en -z cambian a -ces en plural.\nLápiz → lápices.\nPez → peces.\nLuz → luces.'},
+  {tipo:'opcion_multiple',enunciado:'¿Qué palabra lleva tilde?',opciones:['Cancion','Arbol','Ratón','Ambas primeras'],correcta:'Ratón',explicacion:'¡Bien visto! "Ratón" es aguda terminada en -n y lleva tilde.',desglose:'"Canción" y "árbol" TAMBIÉN llevarían tilde bien escritas, pero aquí aparecen sin ella.\nLa única escrita correctamente con su tilde es "ratón".\nAgudas terminadas en n, s o vocal → llevan tilde.'}]}
+]};
+
+/* ==================== TEMARIO POR CURSO (CHILE) ==================== */
+const CURSOS=[['1B','1º Básico',6],['2B','2º Básico',7],['3B','3º Básico',8],['4B','4º Básico',9],
+ ['5B','5º Básico',10],['6B','6º Básico',11],['7B','7º Básico',12],['8B','8º Básico',13],
+ ['1M','1º Medio',14],['2M','2º Medio',15],['3M','3º Medio',16],['4M','4º Medio',17]];
+// ===CURRICULUM-INICIO===
+const CURRICULUM={
+'Matemática':{
+ '1B':['Números del 0 al 20','Sumas y restas hasta 20','Figuras geométricas 2D','Patrones y secuencias','Comparar y ordenar cantidades'],
+ '2B':['Números hasta 100','Sumas y restas con reserva','Tablas del 2, del 5 y del 10','Figuras 2D y 3D','Medición: longitud y tiempo'],
+ '3B':['Números hasta 1.000','Tablas de multiplicar (3, 4, 6 y 8)','División básica','Fracciones simples (1/2, 1/3, 1/4)','Perímetro de figuras','Pictogramas y gráficos de barra'],
+ '4B':['Números hasta 10.000','Multiplicación y división','Fracciones y decimales','Área y perímetro','Plano cartesiano (primer cuadrante)','Lectura de tablas y gráficos'],
+ '5B':['Números grandes y aproximación','Multiplicación de 2 dígitos','Fracciones propias e impropias','Números decimales','Ángulos y su medición','Promedio de datos'],
+ '6B':['Operatoria combinada','Fracciones y decimales: las 4 operaciones','Razones y porcentajes','Área de triángulos y paralelogramos','Volumen de cubos','Ecuaciones de primer grado simples'],
+ '7B':['Números enteros','Porcentajes y proporcionalidad','Ecuaciones e inecuaciones lineales','Círculo: perímetro y área','Estadística: tablas de frecuencia','Probabilidad básica'],
+ '8B':['Potencias de base entera','Raíces cuadradas','Función lineal y afín','Ecuaciones lineales','Teorema de Pitágoras','Probabilidad y principio multiplicativo'],
+ '1M':['Números racionales','Potencias y crecimiento','Productos notables y factorización','Sistemas de ecuaciones lineales','Semejanza y homotecia','Probabilidad: regla de Laplace'],
+ '2M':['Números reales','Raíces enésimas y logaritmos','Función cuadrática','Trigonometría en el triángulo rectángulo','Probabilidad condicional','Medidas de dispersión'],
+ '3M':['Funciones exponencial y logarítmica','Geometría analítica','Probabilidades para tomar decisiones','Estadística descriptiva'],
+ '4M':['Matemática financiera: interés simple y compuesto','Modelamiento con funciones','Probabilidad y decisiones','Preparación PAES: números y álgebra']},
+'Lenguaje y Comunicación':{
+ '1B':['Vocales y consonantes','Lectura de palabras y oraciones','Comprensión de cuentos','Escritura de palabras simples'],
+ '2B':['Comprensión lectora literal','Sustantivos y artículos','Mayúsculas y punto final','Cuentos, poemas y adivinanzas'],
+ '3B':['Idea principal y detalles','Sustantivos, adjetivos y verbos','Ortografía: uso de c, s y z','Textos narrativos e informativos'],
+ '4B':['Comprensión: inferencias simples','Tiempos verbales','Acentuación: agudas, graves y esdrújulas','Escritura de párrafos','La leyenda y el mito'],
+ '5B':['Inferencias y propósito del texto','Sujeto y predicado','Ortografía acentual y literal','Figuras literarias básicas','Texto de opinión'],
+ '6B':['Análisis de narraciones','Género lírico: verso, rima y estrofa','Conectores','Textos expositivos','Ortografía puntual: coma y punto'],
+ '7B':['Tipos de narrador','Textos no literarios','Coherencia y cohesión','Publicidad y propaganda','Mitos y relatos de origen'],
+ '8B':['Género dramático','La argumentación','Medios de comunicación','Comprensión crítica de textos','Poesía y romanticismo'],
+ '1M':['Mundos literarios en la narrativa','Textos argumentativos','Comunicación oral y debate','Gramática: la oración'],
+ '2M':['Género lírico: hablante y figuras','El ensayo','Medios masivos y opinión pública','Literatura e identidad latinoamericana'],
+ '3M':['Argumentación y persuasión','Literatura contemporánea','Análisis crítico de medios digitales','Producción de textos académicos'],
+ '4M':['El discurso público','Literatura y contexto histórico','Preparación PAES: comprensión lectora','Estrategias de vocabulario']},
+'Ciencias Naturales':{
+ '1B':['Los cinco sentidos','Seres vivos y no vivos','Las estaciones del año','Materiales y sus propiedades'],
+ '2B':['Ciclos de vida de los animales','Hábitats de Chile','El agua y sus usos','Órganos del cuerpo humano'],
+ '3B':['Las plantas y sus necesidades','El Sistema Solar','Luz y sonido','Alimentación saludable'],
+ '4B':['Ecosistemas y cadenas alimentarias','Sistema esquelético y muscular','Estados de la materia','Fuerza y movimiento'],
+ '5B':['Sistemas digestivo, respiratorio y circulatorio','El agua en la Tierra y los océanos','Circuitos eléctricos simples','Niveles de organización de los seres vivos'],
+ '6B':['Pubertad y reproducción humana','La energía y sus transformaciones','Capas y dinámica de la Tierra','Fotosíntesis'],
+ '7B':['La célula','Sexualidad y autocuidado','Comportamiento de los gases','Fuerzas y sismos en Chile'],
+ '8B':['Nutrición y salud','Célula: estructura y transporte','Electricidad y calor','El átomo y la tabla periódica'],
+ '1M':['Evolución y biodiversidad','Reacciones químicas','Ondas, sonido y luz','Sismos y estructura de la Tierra'],
+ '2M':['Genética y herencia mendeliana','Movimiento rectilíneo y fuerzas','Disoluciones químicas','Sistema nervioso y coordinación'],
+ '3M':['Ciudadanía científica: salud y enfermedad','Prevención de riesgos naturales','Energía y sustentabilidad'],
+ '4M':['Medioambiente y sostenibilidad','Ciencia, tecnología y sociedad','Bienestar y salud integral']},
+'Historia y Geografía':{
+ '1B':['Mi familia y mi comunidad','Símbolos y emblemas de Chile','Nociones de ubicación espacial','Trabajos y oficios'],
+ '2B':['Pueblos originarios de Chile','Paisajes y zonas de Chile','Normas para la buena convivencia','Chile y sus tradiciones'],
+ '3B':['Grecia y Roma antiguas','Zonas climáticas de la Tierra','Derechos de los niños y niñas','Puntos cardinales y planos'],
+ '4B':['América: relieve y recursos','Mayas, aztecas e incas','Mapas y coordenadas geográficas','Organización política de Chile'],
+ '5B':['Descubrimiento y conquista de América','Zonas naturales de Chile','La Colonia en Chile','Derechos y deberes ciudadanos'],
+ '6B':['Independencia de Chile','Chile en el siglo XIX','Democracia y participación','Geografía de Chile: regiones'],
+ '7B':['Primeras civilizaciones: Mesopotamia y Egipto','La Antigüedad clásica','La Edad Media','Ciudades y vida urbana'],
+ '8B':['Humanismo y Renacimiento','Descubrimiento y conquista de América','Sociedad colonial americana','La Ilustración y las revoluciones'],
+ '1M':['Estado nación y sociedad burguesa','Revolución industrial','Chile en el siglo XIX: economía del salitre','Imperialismo y Primera Guerra Mundial'],
+ '2M':['Chile a inicios del siglo XX','Guerras mundiales y crisis de 1929','Guerra Fría','Chile: quiebre y recuperación de la democracia'],
+ '3M':['Educación ciudadana: democracia y participación','Derechos humanos','Estado de derecho en Chile','Medios y opinión pública'],
+ '4M':['Economía y sociedad','Chile en la globalización','Territorio y medioambiente','Preparación PAES: historia']},
+'Inglés':{
+ '1B':['Greetings and introductions','Colors and numbers 1-20','Animals','My family'],
+ '2B':['School objects','Days and months','Parts of the body','Food I like'],
+ '3B':['Verb to be','Toys and games','The weather','My daily routine'],
+ '4B':['Present simple','Places in town','Clothes','Hobbies and sports'],
+ '5B':['Present continuous','Food and health','Free time activities','Comparatives and superlatives'],
+ '6B':['Past simple: verb to be','Travel and transport','Technology','Adverbs of frequency'],
+ '7B':['Past simple: regular and irregular verbs','Future with going to','Countries and cultures','The environment'],
+ '8B':['Present perfect (introduction)','Modal verbs: can, must, should','Healthy habits','Media and entertainment'],
+ '1M':['Present perfect and past simple','First conditional','Technology and society','Describing people and places'],
+ '2M':['Second conditional','Passive voice','Global issues','Plans for the future'],
+ '3M':['Reported speech','Opinion essays','Global citizenship','Listening and reading strategies'],
+ '4M':['Job interviews and CVs','Debate and argumentation','Reading comprehension strategies','Preparation for exams']}
+};
+// ===CURRICULUM-FIN===
+let modoTemario=true;
+function nombreCurso(v){ const c=CURSOS.find(c=>c[0]===v); return c?c[1]:v; }
+function fijarModo(temario){
+  modoTemario=temario;
+  $('modo-temario').classList.toggle('activo',temario);
+  $('modo-propio').classList.toggle('activo',!temario);
+  $('seccion-temario').classList.toggle('oculto',!temario);
+  $('seccion-propio').classList.toggle('oculto',temario);
+  $('btn-ejemplo').classList.toggle('oculto',temario);
+}
+function poblarMaterias(){
+  const sel=$('sel-materia-cur'); sel.innerHTML='';
+  Object.keys(CURRICULUM).forEach(m=>{
+    const o=document.createElement('option'); o.value=m; o.textContent=m; sel.appendChild(o);
+  });
+}
+function poblarTemas(){
+  const mat=$('sel-materia-cur').value, cur=$('sel-nivel').value;
+  const temas=(CURRICULUM[mat]&&CURRICULUM[mat][cur])||[];
+  const cont=$('lista-temas'); cont.innerHTML='';
+  if(!temas.length){
+    const d=document.createElement('div'); d.className='vacio';
+    d.textContent='No hay temario para esta combinación. Prueba otra asignatura o usa "Contenido propio".';
+    cont.appendChild(d); return;
+  }
+  temas.forEach((t,i)=>{
+    const lab=document.createElement('label');
+    const ch=document.createElement('input'); ch.type='checkbox'; ch.value=t; if(i<3) ch.checked=true;
+    const sp=document.createElement('span'); sp.textContent=t;
+    lab.appendChild(ch); lab.appendChild(sp); cont.appendChild(lab);
+  });
+}
+function temasMarcados(){
+  return Array.from($('lista-temas').querySelectorAll('input:checked')).map(i=>i.value);
+}
+$('modo-temario').addEventListener('click',()=>{Audio8.sfx.menu();fijarModo(true);});
+$('modo-propio').addEventListener('click',()=>{Audio8.sfx.menu();fijarModo(false);});
+$('sel-materia-cur').addEventListener('change',()=>{Audio8.sfx.menu();poblarTemas();});
+$('sel-nivel').addEventListener('change',()=>{
+  const c=CURSOS.find(c=>c[0]===$('sel-nivel').value);
+  if(c) $('in-edad').value=c[2];
+  poblarTemas();
+});
+$('btn-todos').addEventListener('click',()=>{
+  Audio8.sfx.menu();
+  const cajas=Array.from($('lista-temas').querySelectorAll('input[type=checkbox]'));
+  const todos=cajas.length&&cajas.every(c=>c.checked);
+  cajas.forEach(c=>c.checked=!todos);
+});
+poblarMaterias(); poblarTemas();
+
+/* ==================== PANTALLA TÍTULO ==================== */
+function iniciarTitulo(){
+  pintarEnCanvas($('cv-titulo'), ARTES.brotito);
+  escribir($('tag-titulo'),'¡Bienvenido a PuebloSaber! Explora, haz amigos... y responde para ganar. Cada batalla es una pregunta de tu temario.');
+}
+$('btn-comenzar').addEventListener('click',()=>{
+  Audio8.init(); Audio8.sfx.elegir();
+  irA('pantalla-config');
+});
+
+/* ==================== PANTALLA CONFIGURACIÓN ==================== */
+const TIPS=[
+ 'Consejo: pisa la hierba alta para encontrar criaturas con preguntas.',
+ 'Consejo: fallar no resta puntos de verdad. ¡Cada error enseña!',
+ 'Consejo: las preguntas falladas vuelven hasta que las domines.',
+ 'Consejo: consigue 3 insignias para retar al Líder del Gimnasio.',
+ 'Consejo: habla con los aldeanos, ¡también te retan!'];
+let tipTimer=null;
+function mostrarCargando(v){
+  $('overlay-cargando').classList.toggle('oculto',!v);
+  if(tipTimer){clearInterval(tipTimer);tipTimer=null;}
+  if(v){
+    let i=0; $('tip-cargando').textContent=TIPS[0];
+    tipTimer=setInterval(()=>{i=(i+1)%TIPS.length;$('tip-cargando').textContent=TIPS[i];},2600);
+  }
+}
+function mostrarError(msj){
+  $('overlay-error').classList.remove('oculto');
+  $('txt-error').textContent=msj;
+}
+$('btn-volver-titulo').addEventListener('click',()=>{Audio8.sfx.menu();irA('pantalla-titulo');iniciarTitulo();});
+$('btn-ejemplo').addEventListener('click',()=>{
+  Audio8.sfx.menu();
+  if(!$('in-materia').value) $('in-materia').value='Repaso general';
+  $('in-contenido').value=
+'Tema 1: La multiplicación. Multiplicar es sumar varias veces el mismo número. 3 x 4 = 12 porque es 4+4+4. La tabla del 7: 7,14,21,28,35,42,49,56,63,70.\n'
++'Tema 2: Las plantas. Las plantas fabrican su alimento con la fotosíntesis usando luz del sol, agua y aire. Sus partes son raíz, tallo, hojas, flor y fruto.\n'
++'Tema 3: Los signos de puntuación. El punto termina una oración. La coma separa elementos de una lista. Los signos de interrogación ¿? se usan para preguntar.';
+});
+$('in-imagen').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0];
+  S.imagenArchivo=f||null;
+  $('nombre-archivo').textContent=f?('📎 '+f.name):'';
+  const img=$('img-preview');
+  if(f){ const url=URL.createObjectURL(f); img.src=url; img.style.display='inline-block'; }
+  else{ img.style.display='none'; }
+});
+async function crearAventura(){
+  const cursoTxt=nombreCurso($('sel-nivel').value);
+  const nivel=cursoTxt+' (Chile)';
+  const edad=clamp(parseInt($('in-edad').value,10)||8,5,18);
+  let tarea=null, materia='';
+  if(modoTemario){
+    materia=$('sel-materia-cur').value;
+    const temas=temasMarcados();
+    if(!temas.length){ mostrarError('Marca al menos un tema del temario para crear la aventura.'); return; }
+    const contenido='Temario oficial chileno de '+materia+' para '+cursoTxt+'. Temas elegidos por el apoderado:\n- '
+      +temas.join('\n- ')
+      +'\nGenera preguntas alineadas a lo que se enseña en '+cursoTxt+' en Chile sobre esos temas. Cuando ayude, usa contexto chileno (pesos chilenos, lugares y ejemplos de Chile).';
+    tarea=()=>generarDesdeTexto(contenido,edad,materia,nivel);
+    $('txt-cargando').textContent='Creando preguntas del temario de '+cursoTxt+'...';
+  } else {
+    materia=$('in-materia').value.trim();
+    const contenido=$('in-contenido').value.trim();
+    if(!materia){ mostrarError('Escribe la materia (por ejemplo, Matemática) para poder crear la aventura.'); return; }
+    if(!contenido && !S.imagenArchivo){ mostrarError('Pega el temario en el cuadro de texto o sube una foto del examen. ¡Con eso construimos el pueblo!'); return; }
+    tarea=S.imagenArchivo
+      ? ()=>generarDesdeImagen(S.imagenArchivo,edad,materia,nivel)
+      : ()=>generarDesdeTexto(contenido,edad,materia,nivel);
+    $('txt-cargando').textContent=S.imagenArchivo?'Leyendo el examen y creando preguntas...':'Creando tu pueblo de preguntas...';
+  }
+  S.config={materia,nivel,edad};
+  mostrarCargando(true);
+  try{
+    const subs=normalizarDatos(await tarea());
+    mostrarCargando(false);
+    prepararJuego(subs);
+  }catch(err){
+    mostrarCargando(false);
+    mostrarError('No se pudieron generar las preguntas ('+(err&&err.message?err.message:'error de conexión')+'). Puedes reintentarlo o jugar con las preguntas de ejemplo.');
+  }
+}
+$('btn-crear').addEventListener('click',()=>{Audio8.init();Audio8.sfx.elegir();crearAventura();});
+$('btn-reintentar').addEventListener('click',()=>{$('overlay-error').classList.add('oculto');crearAventura();});
+$('btn-offline').addEventListener('click',()=>{
+  $('overlay-error').classList.add('oculto');
+  S.config.materia=S.config.materia||(modoTemario?$('sel-materia-cur').value:$('in-materia').value.trim())||'Repaso general';
+  S.config.edad=clamp(parseInt($('in-edad').value,10)||8,5,18);
+  prepararJuego(normalizarDatos(JSON.parse(JSON.stringify(BANCO_EJEMPLO))));
+});
+
+/* ==================== PREPARAR PARTIDA ==================== */
+function prepararJuego(subs){
+  S.subtemas=subs;
+  S.zonas=[0,1,2].map(i=>i%subs.length);
+  S.jugador={xp:0,nivel:1,hpMax:100};
+  S.colaFallidas=[];
+  S.insignias=[false,false,false,false];
+  S.estad={aciertos:0,fallos:0,batallas:0};
+  reiniciarMapa();
+  actualizarHUD();
+  irA('pantalla-mapa');
+  dialogoMapa('¡Bienvenido a PuebloSaber!\nHoy toca: '+S.config.materia+'.\nCamina por la hierba alta 🌿 del suroeste para tu primer reto. (Muévete con flechas o WASD)');
+}
+
+/* ==================== MAPA DEL PUEBLO ==================== */
+const M={W:26,H:21,g:null};
+const O={x:12,y:14,fx:12,fy:14,dir:'abajo',mov:false,destX:12,destY:14,gracia:0,cool:0};
+let TILE=44, dpr=1, camX=0, camY=0;
+const teclas={arriba:false,abajo:false,izquierda:false,derecha:false};
+
+// ===MAPA-PURO-INICIO===
+function construirMapaPuro(){
+  const W=26,H=21;
+  const g=Array.from({length:H},()=>Array(W).fill('.'));
+  const pon=(x,y,c)=>{ if(y>=0&&y<H&&x>=0&&x<W) g[y][x]=c; };
+  const rect=(x,y,w,h,c)=>{ for(let j=y;j<y+h;j++) for(let i=x;i<x+w;i++) pon(i,j,c); };
+  // borde de árboles
+  rect(0,0,W,1,'T'); rect(0,H-1,W,1,'T'); rect(0,0,1,H,'T'); rect(W-1,0,1,H,'T');
+  // caminos
+  rect(3,13,20,1,'P');   // camino principal
+  rect(12,5,1,8,'P');    // vertical central
+  rect(4,7,1,6,'P');     // hacia el campo azul (noroeste)
+  rect(18,5,1,8,'P');    // hacia el gimnasio (noreste)
+  rect(12,5,7,1,'P');    // conector superior
+  // gimnasio
+  rect(15,1,7,2,'R'); rect(15,3,7,1,'H'); pon(18,3,'D');
+  pon(18,4,'M'); pon(18,7,'C');
+  // campo azul 'h' cercado con guardiana B
+  rect(1,1,9,6,'T'); rect(2,2,7,4,'h'); pon(4,6,'B'); pon(4,3,'3');
+  // casas del centro
+  rect(6,9,4,1,'R'); rect(6,10,4,1,'H'); pon(7,11,'D');
+  rect(14,9,4,1,'R'); rect(14,10,4,1,'H'); pon(15,11,'D');
+  // estanque
+  rect(21,8,3,3,'W');
+  // campo verde 'G' abierto
+  rect(2,15,4,4,'G'); pon(7,16,'1');
+  // campo naranja 'g' cercado con guardián A
+  rect(15,15,10,5,'T'); rect(16,16,8,3,'g'); pon(19,15,'A'); pon(22,17,'2');
+  // flores decorativas
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++) if(g[y][x]==='.'&&((x*7+y*11)%19===0)) g[y][x]=',';
+  pon(12,14,'.');
+  return {g,W,H,inicio:{x:12,y:14}};
+}
+// ===MAPA-PURO-FIN===
+
+function reiniciarMapa(){
+  const m=construirMapaPuro();
+  M.g=m.g;
+  O.x=m.inicio.x; O.y=m.inicio.y; O.fx=O.x; O.fy=O.y;
+  O.dir='abajo'; O.mov=false; O.gracia=1; O.cool=0;
+}
+function andable(x,y){
+  const fila=M.g[y]; if(!fila) return false;
+  const ch=fila[x];
+  return !!ch && '.,PGgh'.includes(ch);
+}
+function frente(){
+  const v={arriba:[0,-1],abajo:[0,1],izquierda:[-1,0],derecha:[1,0]}[O.dir];
+  return [O.x+v[0], O.y+v[1]];
+}
+function zonaDe(ch){ return {G:0,g:1,h:2}[ch]; }
+
+/* ---- diálogo del mapa ---- */
+let dlgMapaCb=null;
+function dialogoMapa(texto,cb){
+  S.dlgAbierto=true; dlgMapaCb=cb||null;
+  $('dlg-mapa').classList.remove('oculto');
+  $('cont-mapa').classList.add('oculto');
+  escribir($('texto-mapa'),texto,()=>{$('cont-mapa').classList.remove('oculto');});
+}
+function cerrarDialogoMapa(){
+  $('dlg-mapa').classList.add('oculto');
+  $('cont-mapa').classList.add('oculto');
+  S.dlgAbierto=false;
+}
+function avanzarDialogoMapa(){
+  if(!S.dlgAbierto) return;
+  if(escribiendo()){ terminarEscritura(); return; }
+  Audio8.sfx.menu();
+  const cb=dlgMapaCb; dlgMapaCb=null;
+  cerrarDialogoMapa();
+  if(cb) cb();
+}
+$('dlg-mapa').addEventListener('click',avanzarDialogoMapa);
+
+/* ---- interacción (tecla acción) ---- */
+function accion(){
+  Audio8.init();
+  if(S.dlgAbierto){ avanzarDialogoMapa(); return; }
+  const [fx,fy]=frente();
+  const ch=(M.g[fy]||[])[fx];
+  if(!ch) return;
+  const zn={'1':0,'2':1,'3':2};
+  if(ch in zn){
+    const z=zn[ch], sub=S.subtemas[S.zonas[z]].nombre;
+    const nombres=['granjero Brote','herrera Chispa','pescador Río'];
+    dialogoMapa('¡Hola! Soy el '+nombres[z]+'. ¿Practicamos "'+sub+'"?\n¡Mi '+CRIATURAS[z].nombre+' quiere retarte!',()=>iniciarBatalla(z,false));
+  } else if(ch==='A'){
+    if(S.insignias[0]) dialogoMapa('Guardián: ¡veo la Insignia Pradera brillar! Adelante, valiente.',()=>{M.g[fy][fx]='P';});
+    else dialogoMapa('Guardián: solo pasan quienes tienen la Insignia Pradera.\nEntrena en la hierba verde 🌿 del suroeste.');
+  } else if(ch==='B'){
+    if(S.insignias[1]) dialogoMapa('Guardiana: ¡la Insignia Chispa! Puedes pasar al campo azul.',()=>{M.g[fy][fx]='P';});
+    else dialogoMapa('Guardiana: necesitas la Insignia Chispa.\nConsíguela en la hierba naranja del sureste.');
+  } else if(ch==='C'){
+    if(S.insignias[0]&&S.insignias[1]&&S.insignias[2]) dialogoMapa('Guardián del gimnasio: ¡tres insignias! El Líder Sabiodrón te espera arriba.',()=>{M.g[fy][fx]='P';});
+    else dialogoMapa('Guardián del gimnasio: reúne las 3 insignias (Pradera, Chispa y Río) y podrás retar al Líder.');
+  } else if(ch==='M'){
+    dialogoMapa('Líder Sabiodrón: "Joven sabio... demuestra TODO lo que has aprendido.\n¡¡Batalla final!!"',()=>iniciarBatalla(3,true));
+  } else if(ch==='D'){ dialogoMapa('La puerta está cerrada. ¡Se oye a alguien estudiando dentro!');
+  } else if(ch==='W'){ dialogoMapa('El agua brilla al sol. ¡Una Gotina te saluda desde el estanque! 💧');
+  } else if(ch==='H'||ch==='R'){ dialogoMapa('Una casita acogedora de PuebloSaber.'); }
+}
+
+/* ---- actualización del mundo ---- */
+function actualizarMundo(){
+  if(S.dlgAbierto) return;
+  const VEL=0.075;
+  if(O.mov){
+    O.fx += Math.sign(O.destX-O.fx)*Math.min(VEL,Math.abs(O.destX-O.fx));
+    O.fy += Math.sign(O.destY-O.fy)*Math.min(VEL,Math.abs(O.destY-O.fy));
+    if(Math.abs(O.destX-O.fx)<0.001 && Math.abs(O.destY-O.fy)<0.001){
+      O.fx=O.destX; O.fy=O.destY; O.x=O.destX; O.y=O.destY; O.mov=false;
+      alLlegar();
+    }
+  } else {
+    let dx=0,dy=0;
+    if(teclas.arriba){dy=-1;O.dir='arriba';}
+    else if(teclas.abajo){dy=1;O.dir='abajo';}
+    else if(teclas.izquierda){dx=-1;O.dir='izquierda';}
+    else if(teclas.derecha){dx=1;O.dir='derecha';}
+    if(dx||dy){
+      const nx=O.x+dx, ny=O.y+dy;
+      if(andable(nx,ny)){ O.mov=true; O.destX=nx; O.destY=ny; }
+    }
+  }
+}
+function alLlegar(){
+  const ch=M.g[O.y][O.x];
+  if('Ggh'.includes(ch)){
+    if(O.gracia>0){ O.gracia--; return; }
+    if(O.cool>0){ O.cool--; return; }
+    if(Math.random()<0.22){ O.cool=2; iniciarBatalla(zonaDe(ch),false); }
+  } else { if(O.cool>0)O.cool--; if(O.gracia>0)O.gracia--; }
+}
+
+/* ---- dibujo del mundo ---- */
+function redimensionar(){
+  const cv=$('cv-mapa');
+  dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=Math.floor(window.innerWidth*dpr);
+  cv.height=Math.floor(window.innerHeight*dpr);
+  TILE=clamp(Math.floor(Math.min(window.innerWidth/12, window.innerHeight/9)),26,64);
+}
+function baseHierba(ctx,dx,dy,x,y){
+  ctx.fillStyle='#6CBF4A'; ctx.fillRect(dx,dy,TILE,TILE);
+  ctx.fillStyle='#5FB13F';
+  if((x*13+y*7)%5===0) ctx.fillRect(dx+TILE*0.2,dy+TILE*0.3,TILE*0.12,TILE*0.12);
+  if((x*11+y*17)%7===0) ctx.fillRect(dx+TILE*0.65,dy+TILE*0.6,TILE*0.12,TILE*0.12);
+}
+function dibujarTile(ctx,ch,dx,dy,x,y,t){
+  const T=TILE;
+  switch(ch){
+    case 'P': case 'M': case 'A': case 'B': case 'C':
+      ctx.fillStyle='#E8D8A0'; ctx.fillRect(dx,dy,T,T);
+      ctx.fillStyle='#D9C488';
+      if((x*5+y*3)%4===0) ctx.fillRect(dx+T*0.3,dy+T*0.45,T*0.14,T*0.1);
+      break;
+    case 'W': {
+      ctx.fillStyle='#4A9DF2'; ctx.fillRect(dx,dy,T,T);
+      ctx.fillStyle='#8CC4FA';
+      const fase=(Math.floor(t/450)+x+y)%3;
+      ctx.fillRect(dx+T*0.15,dy+T*(0.2+fase*0.25),T*0.5,T*0.08);
+      break; }
+    case 'T':
+      baseHierba(ctx,dx,dy,x,y);
+      ctx.fillStyle='#7A4E2B'; ctx.fillRect(dx+T*0.38,dy+T*0.55,T*0.24,T*0.4);
+      ctx.fillStyle='#3E8E41'; ctx.fillRect(dx+T*0.08,dy+T*0.05,T*0.84,T*0.62);
+      ctx.fillStyle='#57A85C'; ctx.fillRect(dx+T*0.18,dy+T*0.12,T*0.36,T*0.24);
+      break;
+    case 'R': {
+      const gim=(x>=15&&y<=2);
+      ctx.fillStyle=gim?'#8E5AC8':'#D96A45'; ctx.fillRect(dx,dy,T,T);
+      ctx.fillStyle=gim?'#6E3FA6':'#B84F32'; ctx.fillRect(dx,dy+T*0.75,T,T*0.25);
+      break; }
+    case 'H':
+      ctx.fillStyle='#F2E3C2'; ctx.fillRect(dx,dy,T,T);
+      ctx.fillStyle='#7FB4D9'; ctx.fillRect(dx+T*0.25,dy+T*0.25,T*0.5,T*0.4);
+      ctx.fillStyle='#262633'; ctx.fillRect(dx+T*0.25,dy+T*0.25,T*0.5,T*0.06);
+      break;
+    case 'D':
+      ctx.fillStyle='#F2E3C2'; ctx.fillRect(dx,dy,T,T);
+      ctx.fillStyle='#8A5A33'; ctx.fillRect(dx+T*0.25,dy+T*0.15,T*0.5,T*0.85);
+      ctx.fillStyle='#F2B434'; ctx.fillRect(dx+T*0.6,dy+T*0.55,T*0.08,T*0.08);
+      break;
+    case 'G': case 'g': case 'h': {
+      baseHierba(ctx,dx,dy,x,y);
+      ctx.fillStyle={G:'#2E7D32',g:'#E08A2E',h:'#3D7DE4'}[ch];
+      for(let i=0;i<3;i++){
+        const gx=dx+T*(0.12+i*0.3), gy=dy+T*0.35;
+        ctx.fillRect(gx,gy,T*0.16,T*0.5);
+        ctx.fillRect(gx-T*0.05,gy+T*0.15,T*0.26,T*0.14);
+      }
+      break; }
+    case ',':
+      baseHierba(ctx,dx,dy,x,y);
+      ctx.fillStyle='#fff'; ctx.fillRect(dx+T*0.4,dy+T*0.35,T*0.2,T*0.2);
+      ctx.fillStyle='#F2B434'; ctx.fillRect(dx+T*0.45,dy+T*0.4,T*0.1,T*0.1);
+      break;
+    default:
+      baseHierba(ctx,dx,dy,x,y);
+  }
+}
+const PAL_NPC={'1':{C:'#58C05A'},'2':{C:'#F2913D'},'3':{C:'#4A9DF2'},
+  'A':{C:'#7A8699',H:'#3b4252'},'B':{C:'#7A8699',H:'#3b4252'},'C':{C:'#7A8699',H:'#3b4252'},
+  'M':{C:'#8E5AC8',H:'#262633'}};
+function dibujarPersonaje(ctx,arte,tx,ty,flip,palExtra,bob){
+  const s=TILE/14, w=12*s, h=arte.px.length*s;
+  dibujarArte(ctx,arte, tx*TILE-camX+(TILE-w)/2, ty*TILE-camY+(TILE-h)-2+(bob||0), s, flip, palExtra);
+}
+function renderMundo(t){
+  const cv=$('cv-mapa'), ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.imageSmoothingEnabled=false;
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const mw=M.W*TILE, mh=M.H*TILE;
+  camX = mw<=vw ? -(vw-mw)/2 : clamp(O.fx*TILE-vw/2+TILE/2,0,mw-vw);
+  camY = mh<=vh ? -(vh-mh)/2 : clamp(O.fy*TILE-vh/2+TILE/2,0,mh-vh);
+  ctx.fillStyle='#101820'; ctx.fillRect(0,0,vw,vh);
+  for(let y=0;y<M.H;y++)for(let x=0;x<M.W;x++){
+    const dx=x*TILE-camX, dy=y*TILE-camY;
+    if(dx>vw||dy>vh||dx+TILE<0||dy+TILE<0) continue;
+    dibujarTile(ctx,M.g[y][x],dx,dy,x,y,t);
+  }
+  // NPCs y guardianes
+  for(let y=0;y<M.H;y++)for(let x=0;x<M.W;x++){
+    const ch=M.g[y][x];
+    if(PAL_NPC[ch]) dibujarPersonaje(ctx,ARTES.aldeano,x,y,false,PAL_NPC[ch],Math.sin(t/500+x)*1.5);
+  }
+  // jugador
+  const arte=O.dir==='arriba'?ARTES.jugArriba:O.dir==='abajo'?ARTES.jugAbajo:ARTES.jugLado;
+  dibujarPersonaje(ctx,arte,O.fx,O.fy,O.dir==='izquierda',null,O.mov?Math.sin(t/60)*TILE*0.04:0);
+}
+
+/* ---- HUD y misión ---- */
+function misionActual(){
+  if(!S.insignias[0]) return 'consigue la Insignia Pradera en la hierba verde 🌿 del suroeste.';
+  if(!S.insignias[1]) return 'el guardián del sureste ya te dejará pasar. ¡A por la Insignia Chispa!';
+  if(!S.insignias[2]) return 'camino noroeste: gana la Insignia Río en la hierba azul.';
+  if(!S.insignias[3]) return '¡reta al Líder Sabiodrón en el gimnasio del norte! 🏛️';
+  return '¡aventura completada! Sigue entrenando cuando quieras.';
+}
+function actualizarHUD(){
+  S.jugador.nivel=nivelDe(S.jugador.xp);
+  S.jugador.hpMax=100+(S.jugador.nivel-1)*10;
+  $('hud-nivel').textContent='Nv '+S.jugador.nivel;
+  $('hud-xp').style.width=(S.jugador.xp%100)+'%';
+  for(let i=0;i<4;i++) dibujarInsignia($('hud-i'+i),i,S.insignias[i]);
+  $('hud-mision').textContent='Misión: '+misionActual();
+}
+function dominadoSub(si){
+  const qs=S.subtemas[si].preguntas;
+  return qs.filter(q=>q.correctas>0).length >= Math.min(3,qs.length);
+}
+function comprobarInsigniasNuevas(){
+  const msgs=[];
+  for(let z=0;z<3;z++){
+    if(!S.insignias[z] && dominadoSub(S.zonas[z])){
+      S.insignias[z]=true;
+      msgs.push('🏅 ¡Has ganado la '+INSIGNIAS[z]+'!\nDominas "'+S.subtemas[S.zonas[z]].nombre+'". ¡Se abre un nuevo camino!');
+    }
+  }
+  if(msgs.length) Audio8.sfx.insignia();
+  return msgs;
+}
+
+/* ==================== BATALLA ==================== */
+const B={zona:0,esGim:false,rival:null,rMax:100,rHP:100,jMax:100,jHP:100,pregunta:null,ultima:null,alContinuar:null};
+
+function actualizarBarras(){
+  const pr=clamp(B.rHP/B.rMax*100,0,100), pj=clamp(B.jHP/B.jMax*100,0,100);
+  const br=$('hp-rival'), bj=$('hp-jugador');
+  br.style.width=pr+'%'; bj.style.width=pj+'%';
+  br.className='hp-fill'+(pr<=25?' baja':pr<=55?' media':'');
+  bj.className='hp-fill'+(pj<=25?' baja':pj<=55?' media':'');
+}
+function cancelarEscritura(){ if(twTimer){clearInterval(twTimer);twTimer=null;} twEl=null; twCb=null; }
+function decirBatalla(txt,cb){
+  $('opciones-batalla').classList.add('oculto');
+  $('entrada-batalla').classList.add('oculto');
+  $('continuar-batalla').classList.add('oculto');
+  B.alContinuar=null;
+  escribir($('texto-batalla'),txt,()=>{
+    if(cb){ $('continuar-batalla').classList.remove('oculto'); B.alContinuar=cb; }
+  });
+}
+function avanzarBatalla(){
+  if(escribiendo()){ terminarEscritura(); return; }
+  if(B.alContinuar && !$('continuar-batalla').classList.contains('oculto')){
+    Audio8.sfx.menu();
+    const cb=B.alContinuar; B.alContinuar=null;
+    $('continuar-batalla').classList.add('oculto');
+    cb();
+  }
+}
+$('dlg-batalla').addEventListener('click',e=>{
+  if(e.target.closest('button,input')) return;
+  avanzarBatalla();
+});
+
+function iniciarBatalla(zona,esGim){
+  if(S.dlgAbierto) cerrarDialogoMapa();
+  cancelarEscritura();
+  Audio8.sfx.encuentro();
+  B.zona=zona; B.esGim=!!esGim;
+  B.rival=CRIATURAS[esGim?3:zona];
+  B.rMax=100; B.rHP=100;
+  B.jMax=S.jugador.hpMax; B.jHP=B.jMax;
+  B.ultima=null; B.pregunta=null;
+  pintarEnCanvas($('cv-rival'),ARTES[B.rival.arte]);
+  pintarEnCanvas($('cv-jugador'),ARTES.entrenador);
+  $('nb-rival').textContent=B.rival.nombre;
+  $('nv-rival').textContent=esGim?'⭐ Líder':'Nv '+S.jugador.nivel;
+  $('nv-jugador').textContent='Nv '+S.jugador.nivel;
+  actualizarBarras();
+  irA('pantalla-batalla');
+  const sub=esGim?null:S.subtemas[S.zonas[zona]].nombre;
+  const intro=esGim
+    ? '¡El Líder Sabiodrón acepta tu reto!\n"Repasaremos TODO el tema. ¡Demuestra tu sabiduría!"'
+    : '¡Un '+B.rival.nombre+' salvaje apareció entre la hierba!\nQuiere ponerte a prueba sobre "'+sub+'".';
+  decirBatalla(intro,preguntar);
+}
+
+function elegirPregunta(){
+  const esGim=B.esGim, sub=esGim?null:S.zonas[B.zona];
+  const todas=S.subtemas.flatMap(s=>s.preguntas);
+  const fall=S.colaFallidas.filter(q=>esGim||q.sub===sub);
+  const pool=(esGim?todas:S.subtemas[sub].preguntas).filter(q=>q!==B.ultima);
+  const nuevas=pool.filter(q=>q.correctas===0 && !fall.includes(q));
+  let q=null;
+  if(fall.length && (Math.random()<0.6 || !nuevas.length)) q=fall[0];
+  else if(nuevas.length) q=nuevas[azar(nuevas.length)];
+  else{
+    const orden=pool.slice().sort((a,b)=>a.correctas-b.correctas);
+    if(orden.length) q=orden[azar(Math.min(3,orden.length))];
+  }
+  if(!q) q=pool[0]||todas[0];
+  B.ultima=q;
+  return q;
+}
+function preguntar(){
+  const q=elegirPregunta(); B.pregunta=q;
+  $('opciones-batalla').classList.add('oculto');
+  $('entrada-batalla').classList.add('oculto');
+  $('continuar-batalla').classList.add('oculto');
+  B.alContinuar=null;
+  escribir($('texto-batalla'), B.rival.nombre+' pregunta:\n'+q.enunciado, ()=>{
+    if(q.opciones&&q.opciones.length>=2) mostrarOpciones(q); else mostrarEntrada(q);
+  });
+}
+function mostrarOpciones(q){
+  const cont=$('opciones-batalla');
+  cont.innerHTML='';
+  const tit=document.createElement('div');
+  tit.className='titulo-op'; tit.textContent='¡Elige tu ataque!';
+  cont.appendChild(tit);
+  barajar(q.opciones).forEach(op=>{
+    const b=document.createElement('button');
+    b.className='btn-ataque'; b.textContent=op; b.title=op;
+    b.addEventListener('click',()=>{ Audio8.sfx.elegir(); responder(norm(op)===norm(q.correcta),op); });
+    cont.appendChild(b);
+  });
+  cont.classList.remove('oculto');
+}
+function evaluarLibre(q,val){
+  const a=norm(val), c=norm(q.correcta);
+  if(!a) return false;
+  if(a===c) return true;
+  const na=parseFloat(a.replace(',','.')), nc=parseFloat(c.replace(',','.'));
+  if(!isNaN(na)&&!isNaN(nc)) return Math.abs(na-nc)<1e-9;
+  if(c.length>2&&(a.includes(c)||c.includes(a))) return true;
+  return false;
+}
+function mostrarEntrada(q){
+  const inp=$('input-respuesta');
+  inp.value='';
+  $('entrada-batalla').classList.remove('oculto');
+  inp.focus();
+}
+$('btn-responder').addEventListener('click',()=>{
+  const q=B.pregunta; if(!q) return;
+  const val=$('input-respuesta').value;
+  if(!val.trim()) return;
+  Audio8.sfx.elegir();
+  responder(evaluarLibre(q,val),val);
+});
+$('input-respuesta').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); $('btn-responder').click(); }
+});
+
+function golpear(idZona,flash){
+  const el=$(idZona);
+  el.classList.remove('golpe','destello'); void el.offsetWidth;
+  el.classList.add('golpe'); if(flash) el.classList.add('destello');
+  setTimeout(()=>el.classList.remove('golpe','destello'),620);
+}
+function responder(ok,elegido){
+  const q=B.pregunta;
+  $('opciones-batalla').classList.add('oculto');
+  $('entrada-batalla').classList.add('oculto');
+  if(ok){
+    q.correctas++;
+    const i=S.colaFallidas.indexOf(q); if(i>=0) S.colaFallidas.splice(i,1);
+    S.estad.aciertos++;
+    Audio8.sfx.correcto();
+    setTimeout(()=>{Audio8.sfx.golpe(); golpear('zona-rival',true);},250);
+    const dmg=B.esGim?20:(34+(S.jugador.nivel-1)*3);
+    B.rHP=Math.max(0,B.rHP-dmg);
+    setTimeout(actualizarBarras,350);
+    setTimeout(()=>decirBatalla('¡Ataque súper efectivo! ⭐\n'+q.explicacion,comprobarEstado),650);
+  } else {
+    q.fallos++;
+    if(!S.colaFallidas.includes(q)) S.colaFallidas.push(q);
+    S.estad.fallos++;
+    Audio8.sfx.fallo();
+    setTimeout(()=>{Audio8.sfx.golpe(); golpear('zona-jugador',true);},250);
+    B.jHP=Math.max(0,B.jHP-25);
+    let animo='';
+    if(B.jHP<=0){ B.jHP=Math.round(B.jMax*0.5); animo='\n¡Uf! Respira hondo... tu energía se recupera sola. En PuebloSaber nunca se pierde: solo se aprende. 💪'; }
+    setTimeout(actualizarBarras,350);
+    const txt='El ataque falló... ¡pero mira lo que aprendemos! 📖\n'+q.desglose+animo+'\n(Esta pregunta volverá hasta que la domines)';
+    setTimeout(()=>decirBatalla(txt,comprobarEstado),650);
+  }
+}
+function comprobarEstado(){
+  if(B.rHP<=0) victoriaBatalla();
+  else preguntar();
+}
+function cadena(msgs,fin){
+  if(!msgs.length){ fin(); return; }
+  decirBatalla(msgs[0],()=>cadena(msgs.slice(1),fin));
+}
+function victoriaBatalla(){
+  S.estad.batallas++;
+  const nivelAntes=S.jugador.nivel;
+  S.jugador.xp+=40;
+  S.jugador.nivel=nivelDe(S.jugador.xp);
+  S.jugador.hpMax=100+(S.jugador.nivel-1)*10;
+  Audio8.sfx.victoria();
+  const msgs=['¡'+B.rival.nombre+' reconoce tu sabiduría!\n¡Has ganado la batalla! +40 EXP ✨'];
+  if(S.jugador.nivel>nivelAntes) msgs.push('⬆️ ¡Has subido al nivel '+S.jugador.nivel+'!\nTu energía máxima aumenta.');
+  msgs.push(...comprobarInsigniasNuevas());
+  if(B.esGim){
+    S.insignias[3]=true;
+    msgs.push('🏆 ¡Has vencido al Líder Sabiodrón!\nRecibes la Insignia Saber, la más brillante de todas.');
+    actualizarHUD();
+    cadena(msgs,mostrarVictoria);
+  } else {
+    actualizarHUD();
+    cadena(msgs,salirBatalla);
+  }
+}
+function salirBatalla(){
+  cancelarEscritura();
+  O.gracia=1;
+  actualizarHUD();
+  irA('pantalla-mapa');
+}
+$('btn-huir').addEventListener('click',()=>{
+  Audio8.sfx.menu();
+  salirBatalla();
+  dialogoMapa('Vuelves al pueblo a coger fuerzas. ¡La aventura te espera!');
+});
+
+/* ==================== VICTORIA FINAL ==================== */
+function mostrarVictoria(){
+  cancelarEscritura();
+  Audio8.sfx.victoria();
+  irA('pantalla-victoria');
+  const vi=$('vic-insignias'); vi.innerHTML='';
+  for(let i=0;i<4;i++){
+    const c=document.createElement('canvas'); c.width=56; c.height=56;
+    dibujarInsignia(c,i,S.insignias[i]); c.title=INSIGNIAS[i];
+    vi.appendChild(c);
+  }
+  const st=$('vic-stats'); st.innerHTML='';
+  const dominadas=S.subtemas.reduce((n,s)=>n+s.preguntas.filter(q=>q.correctas>0).length,0);
+  [['Nivel',S.jugador.nivel],['Batallas',S.estad.batallas],['Aciertos',S.estad.aciertos],['Preguntas dominadas',dominadas]]
+    .forEach(([k,v])=>{const d=document.createElement('div');d.textContent=k+': '+v;st.appendChild(d);});
+  const ul=$('vic-temas'); ul.innerHTML='';
+  S.subtemas.forEach((s,i)=>{
+    const li=document.createElement('li'); const dom=dominadoSub(i);
+    li.textContent=(dom?'✔ ':'• ')+s.nombre+(dom?' — ¡dominado!':' — en progreso');
+    ul.appendChild(li);
+  });
+  const ua=$('vic-aprendido'); ua.innerHTML='';
+  S.subtemas.forEach(s=>{
+    s.preguntas.filter(q=>q.correctas>0).slice(0,2).forEach(q=>{
+      const li=document.createElement('li'); li.textContent=q.explicacion; ua.appendChild(li);
+    });
+  });
+  if(!ua.children.length){ const li=document.createElement('li'); li.textContent='¡Sigue jugando para llenar esta lista!'; ua.appendChild(li); }
+}
+$('btn-seguir').addEventListener('click',()=>{Audio8.sfx.elegir();irA('pantalla-mapa');dialogoMapa('¡El pueblo celebra tu victoria! Puedes seguir entrenando libremente. 🎉');});
+$('btn-nueva').addEventListener('click',()=>{Audio8.sfx.elegir();irA('pantalla-config');});
+
+/* ==================== ENTRADA (teclado y táctil) ==================== */
+const MAPA_TECLAS={ArrowUp:'arriba',w:'arriba',W:'arriba',ArrowDown:'abajo',s:'abajo',S:'abajo',
+  ArrowLeft:'izquierda',a:'izquierda',A:'izquierda',ArrowRight:'derecha',d:'derecha',D:'derecha'};
+window.addEventListener('keydown',e=>{
+  const enCampo=/INPUT|TEXTAREA|SELECT/.test(e.target.tagName);
+  const batallaActiva=$('pantalla-batalla').classList.contains('activa');
+  if(!enCampo && (S.enMapa||batallaActiva) &&
+     ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  if(!enCampo && S.enMapa && MAPA_TECLAS[e.key]) teclas[MAPA_TECLAS[e.key]]=true;
+  if(e.key==='z'||e.key==='Z'||e.key==='Enter'||e.key===' '){
+    if(enCampo) return;
+    if(S.enMapa) accion();
+    else if(batallaActiva) avanzarBatalla();
+    else if($('pantalla-titulo').classList.contains('activa')&&e.key==='Enter') $('btn-comenzar').click();
+  }
+});
+window.addEventListener('keyup',e=>{ if(MAPA_TECLAS[e.key]) teclas[MAPA_TECLAS[e.key]]=false; });
+// pad táctil
+document.querySelectorAll('#pad button[data-dir]').forEach(b=>{
+  const dir=b.dataset.dir;
+  const on=e=>{e.preventDefault();Audio8.init();teclas[dir]=true;};
+  const off=e=>{e.preventDefault();teclas[dir]=false;};
+  b.addEventListener('pointerdown',on);
+  b.addEventListener('pointerup',off);
+  b.addEventListener('pointerleave',off);
+  b.addEventListener('pointercancel',off);
+});
+$('btn-a').addEventListener('pointerdown',e=>{e.preventDefault();Audio8.init();if(S.enMapa)accion();});
+$('btn-sonido').addEventListener('click',()=>Audio8.toggle());
+document.addEventListener('pointerdown',()=>Audio8.init(),{once:true});
+
+/* ==================== BUCLE PRINCIPAL ==================== */
+function bucle(t){
+  if(S.enMapa && M.g){ actualizarMundo(); renderMundo(t); }
+  requestAnimationFrame(bucle);
+}
+window.addEventListener('resize',redimensionar);
+
+/* ==================== ARRANQUE ==================== */
+sincronizarBotonesSonido();
+iniciarTitulo();
+redimensionar();
+requestAnimationFrame(bucle);
+})();
+</script>
+</body>
+</html>
